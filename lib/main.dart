@@ -40,7 +40,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _checkLicenseCode();
+    // _checkLicenseCode();
   }
 
   Future<void> _checkLicenseCode() async {
