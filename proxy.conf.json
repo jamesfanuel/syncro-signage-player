@@ -1,0 +1,11 @@
+{
+    "/api": {
+        "target": "https://syncrosignage.com",
+        "changeOrigin": true,
+        "secure": true,
+        "logLevel": "debug",
+        "pathRewrite": {
+            "^/api": ""
+        }
+    }
+}

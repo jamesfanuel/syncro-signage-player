@@ -1,0 +1,4 @@
+# web/proxy.yaml
+proxies:
+  /api/:
+    target: "https://syncrosignage.com/"

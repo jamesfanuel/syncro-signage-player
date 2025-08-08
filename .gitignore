@@ -1,0 +1,69 @@
+# Flutter/Dart/Pub related
+.dart_tool/
+.packages
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+build/
+pubspec.lock
+
+# Obsolete
+*.lock
+
+# IntelliJ related
+.idea/
+*.iml
+
+# VS Code related
+.vscode/
+
+# MacOS/Windows/Linux generated files
+*.DS_Store
+*.log
+*.pyc
+*.swp
+*.swo
+*.tmp
+
+# Android related
+android/.gradle/
+android/app/build/
+android/local.properties
+android/.idea/
+
+# iOS related
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Flutter/App.framework
+ios/Flutter/engine/
+ios/Pods/
+ios/.symlinks/
+ios/build/
+ios/.flutter-plugins
+ios/.flutter-plugins-dependencies
+ios/.generated/
+
+# Web
+web/.dart_tool/
+web/build/
+
+# Windows
+windows/build/
+windows/.dart_tool/
+
+# macOS
+macos/Flutter/ephemeral/
+macos/build/
+macos/.dart_tool/
+
+# Linux
+linux/build/
+linux/.dart_tool/
+
+# Firebase
+ios/Runner/GoogleService-Info.plist
+android/app/google-services.json
+
+# Others (optional)
+.env
+*.keystore
