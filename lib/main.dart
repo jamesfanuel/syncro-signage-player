@@ -33,40 +33,15 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  bool _isChecking = true;
   final _apiService = ApiService();
+  bool _isChecking = true; // tetap true sampai user submit license
   LicenseValidationResponse? _validatedLicense;
 
   @override
   void initState() {
     super.initState();
-    // _checkLicenseCode();
-  }
-
-  Future<void> _checkLicenseCode() async {
-    final prefs = await SharedPreferences.getInstance();
-    final licenseCode = prefs.getString('license_code');
-
-    if (licenseCode == null) {
-      Future.delayed(Duration.zero, () => _showLicenseDialog());
-    } else {
-      // Langsung validasi ulang untuk memastikan lisensi masih aktif
-      final result = await _apiService.validateLicenseCode(licenseCode);
-
-      if (result != null && result.status?.toUpperCase() != 'EXPIRED') {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('license_code', licenseCode);
-        setState(() => _isChecking = false);
-      } else if (result?.status?.toUpperCase() == 'EXPIRED') {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('License sudah EXPIRED')),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('License tidak valid')),
-        );
-      }
-    }
+    // Panggil dialog langsung setelah build
+    Future.delayed(Duration.zero, () => _showLicenseDialog());
   }
 
   Future<void> _showLicenseDialog() async {
@@ -75,10 +50,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
     await showDialog(
       context: context,
-      barrierDismissible: false,
+      barrierDismissible: false, // user wajib input
       builder: (context) {
         return StatefulBuilder(
-          builder: (context, setState) => AlertDialog(
+          builder: (context, setStateDialog) => AlertDialog(
             title: const Text('Masukkan License Code'),
             content: TextField(
               controller: controller,
@@ -97,11 +72,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
                     if (result != null) {
                       if (result.status?.toUpperCase() == 'EXPIRED') {
-                        setState(() {
+                        setStateDialog(() {
                           errorMessage = 'License sudah EXPIRED';
                         });
                         return;
                       } else {
+                        // Simpan license & info ke SharedPreferences
                         final prefs = await SharedPreferences.getInstance();
                         await prefs.setString('license_code', code);
                         await prefs.setInt('customer_id', result.data.customerId);
@@ -112,16 +88,18 @@ class _HomeScreenState extends State<HomeScreen> {
 
                         if (mounted) {
                           Navigator.pop(context); // Tutup dialog
-                          this.setState(() => _isChecking = false); // <-- setState milik class utama
+                          setState(() {
+                            _isChecking = false; // masuk ke PlaylistScreen
+                          });
                         }
                       }
                     } else {
-                      setState(() {
+                      setStateDialog(() {
                         errorMessage = 'License tidak terdaftar';
                       });
                     }
                   } catch (e) {
-                    setState(() {
+                    setStateDialog(() {
                       errorMessage = 'Terjadi kesalahan saat validasi';
                     });
                   }
@@ -135,15 +113,17 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-
   @override
   Widget build(BuildContext context) {
     if (_isChecking) {
       return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
       );
-    } else {
-      return const PlaylistScreen();
     }
+
+    // Setelah license valid → masuk ke PlaylistScreen
+    return const PlaylistScreen();
   }
 }
