@@ -8,6 +8,8 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class ApiService {
   /// Validasi license, simpan ke SharedPreferences
@@ -64,11 +66,42 @@ class ApiService {
 
     int completed = 0;
     final playlists = <Playlist>[];
+    final now = DateTime.now();
 
     for (var item in data) {
       try {
+        final isTimed = (item['is_timed'] ?? 0) == 1;
+        final startTimeStr = item['start_time']?.toString();
+        final stopTimeStr = item['stop_time']?.toString();
+
+        // Filter berdasarkan jam jika is_timed = 1
+        if (isTimed && startTimeStr != null && stopTimeStr != null) {
+          final startParts = startTimeStr.split(':').map(int.parse).toList();
+          final stopParts = stopTimeStr.split(':').map(int.parse).toList();
+
+          if (startParts.length < 2 || stopParts.length < 2) {
+            completed++;
+            if (onProgress != null) onProgress(completed / data.length);
+            continue;
+          }
+
+          final startMinutes = startParts[0] * 60 + startParts[1];
+          final stopMinutes = stopParts[0] * 60 + stopParts[1];
+          final nowMinutes = now.hour * 60 + now.minute;
+
+          if (nowMinutes < startMinutes || nowMinutes > stopMinutes) {
+            completed++;
+            if (onProgress != null) onProgress(completed / data.length);
+            continue; // skip playlist ini
+          }
+        }
+
         final filePathStr = (item['file_path'] ?? '').toString().trim();
-        if (filePathStr.isEmpty || !filePathStr.toLowerCase().endsWith('.mp4')) continue;
+        if (filePathStr.isEmpty || !filePathStr.toLowerCase().endsWith('.mp4')) {
+          completed++;
+          if (onProgress != null) onProgress(completed / data.length);
+          continue;
+        }
 
         final updatedItem = Map<String, dynamic>.from(item);
         var filePath = filePathStr;
@@ -81,16 +114,16 @@ class ApiService {
           localFile = await _downloadVideo(filePath, fileName);
           updatedItem['file_path'] = localFile.path;
         } else {
-          // Web → pakai URL asli
           updatedItem['file_path'] = filePath;
         }
 
         playlists.add(Playlist.fromJson(updatedItem));
-
         completed++;
         if (onProgress != null) onProgress(completed / data.length);
       } catch (e) {
-        print('Failed to download one video: $e');
+        print('Failed to process one playlist: $e');
+        completed++;
+        if (onProgress != null) onProgress(completed / data.length);
       }
     }
 
@@ -98,15 +131,38 @@ class ApiService {
   }
 
   Future<File> _downloadVideo(String url, String fileName) async {
-    final dir = await getApplicationDocumentsDirectory();
-    final filePath = '${dir.path}/$fileName';
-    final file = File(filePath);
+    // 1. Minta izin storage
+    if (Platform.isAndroid) {
+      var status = await Permission.storage.request();
+      if (!status.isGranted) {
+        throw Exception('Storage permission denied');
+      }
+    }
 
+    // 2. Tentukan folder eksternal publik
+    Directory? dir;
+    if (Platform.isAndroid) {
+      dir = await getExternalStorageDirectory();
+      // buat subfolder agar mudah dicari
+      dir = Directory('${dir!.path}/Download/YourApp');
+    } else {
+      dir = await getApplicationDocumentsDirectory();
+    }
+
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
+    }
+
+    final file = File('${dir.path}/$fileName');
+
+    // 3. Kalau sudah ada, langsung return
     if (await file.exists()) return file;
 
+    // 4. Download dengan Dio
     try {
       final dio = Dio();
-      await dio.download(url, filePath);
+      await dio.download(url, file.path);
+      print('Downloaded file path: ${file.path}');
       return file;
     } catch (e) {
       print('Download failed: $e');
